@@ -1,0 +1,17 @@
+{
+  "name": "claude-statusline",
+  "version": "1.0.0",
+  "description": "Claude Code status line with Max plan usage bars (current 5h + weekly 7d)",
+  "bin": {
+    "claude-statusline": "install.js"
+  },
+  "files": [
+    "install.js",
+    "statusline.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["claude", "claude-code", "statusline", "anthropic"],
+  "license": "MIT"
+}
