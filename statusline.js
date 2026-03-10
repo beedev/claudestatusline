@@ -75,6 +75,48 @@ function getOAuthToken() {
     } catch {}
   }
 
+  if (platform() === 'win32') {
+    try {
+      const ps = `
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public class CredManager {
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  struct CREDENTIAL {
+    public int Flags; public int Type; public string TargetName;
+    public string Comment; public long LastWritten;
+    public int CredentialBlobSize; public IntPtr CredentialBlob;
+    public int Persist; public int AttributeCount;
+    public IntPtr Attributes; public string TargetAlias; public string UserName;
+  }
+  [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+  static extern bool CredRead(string target, int type, int reserved, out IntPtr cred);
+  [DllImport("advapi32.dll")]
+  static extern void CredFree(IntPtr cred);
+  public static string Get(string target) {
+    IntPtr p; if (!CredRead(target, 1, 0, out p)) return null;
+    var c = (CREDENTIAL)Marshal.PtrToStructure(p, typeof(CREDENTIAL));
+    string s = c.CredentialBlobSize > 0
+      ? Marshal.PtrToStringUni(c.CredentialBlob, c.CredentialBlobSize / 2) : null;
+    CredFree(p); return s;
+  }
+}
+'@
+$r = [CredManager]::Get("Claude Code-credentials")
+if ($r) { Write-Output $r }
+`;
+      const blob = execSync(
+        `powershell -NoProfile -Command ${JSON.stringify(ps)}`,
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], timeout: 5000 }
+      ).trim();
+      if (blob) {
+        const token = JSON.parse(blob)?.claudeAiOauth?.accessToken;
+        if (token) return token;
+      }
+    } catch {}
+  }
+
   return null;
 }
 
